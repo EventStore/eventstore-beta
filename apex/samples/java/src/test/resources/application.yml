@@ -1,0 +1,3 @@
+esdb:
+  certPath: /path/to/certificate_bundle
+  url: esdb+discover://
