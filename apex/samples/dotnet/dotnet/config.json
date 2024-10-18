@@ -1,0 +1,6 @@
+{
+  "esdb": {
+    "certificateDir": "/path/to/certificate_bundle",
+    "url": "esdb+discover://"
+  }
+}
