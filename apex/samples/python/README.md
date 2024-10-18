@@ -27,14 +27,14 @@ pip install -r requirements.txt
 
 Ensure you have downloaded the security certificates from the esdb cloud console and untarred the certificate_bundle.tar.gz file.
 
-### Database Host
+### Connection string
 
-The database host is available at the eventstore cloud console. The database host does not include any scheme (esdb://, https://, etc.)
+Grab the connection string from the eventstore cloud console.
 
-An example host looks like the following:
+An example connection string looks like the following:
 
 ```
-esdb.cs8lpa0a78v4qvbn1nlg.cs8i1c8a78v4qvbn1mtg.sites.dev.eventstore.cloud:2113
+esdb+discover://admin:somepassword@esdb.cs8lpa0a78v4qvbn1nlg.cs8i1c8a78v4qvbn1mtg.sites.dev.eventstore.cloud:2113?userCertFile=tls.crt&tlsCaFile=ca.crt&userKeyFile=tls.key
 ```
 
 ## Running the Application
@@ -42,7 +42,7 @@ esdb.cs8lpa0a78v4qvbn1nlg.cs8i1c8a78v4qvbn1mtg.sites.dev.eventstore.cloud:2113
 ### 1. Run the script
 
 ```bash
-python sample.py --username <username> --password <password> --host <host> --cert <path_to_cert> --key <path_to_key> --ca <path_to_ca_certificate>
+python sample.py --connection-string "<CONNECTION_STRING>" --cert-folder Path/to/certs
 ```
 
 ### 2. Output
