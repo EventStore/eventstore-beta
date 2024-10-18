@@ -137,20 +137,51 @@ def validate_args(args: Namespace):
             raise Exception(f"{arg_name} must be a readable file")
 
 
+def validate_connection_string(connection_string: str, cert_folder: str) -> tuple[str, str]:
+    start_index = connection_string.find("?tlsCaFile=")
+    if start_index == -1:
+        start_index = connection_string.find("&tlsCaFile=")
+        if start_index == -1:
+            raise Exception("tlsCaFile parameter is required in the connection string")
+
+    end_index = connection_string.find("&", start_index + 1)
+    if end_index == -1:
+        ca_file = connection_string[start_index + len("?tlsCaFile="):]
+        if connection_string[start_index] == '?':
+            connection_string = connection_string[:start_index] + "?"
+        else:
+            connection_string = connection_string[:start_index]
+    else:
+        ca_file = connection_string[start_index + len("?tlsCaFile="):end_index]
+        if connection_string[start_index] == '?':
+            connection_string = connection_string[:start_index + 1] + connection_string[end_index + 1:]
+        else:
+            connection_string = connection_string[:start_index] + connection_string[end_index:]
+
+    ca_file = os.path.join(cert_folder, ca_file)
+    connection_string = connection_string.replace("userCertFile=", f"userCertFile={os.path.join(cert_folder, '')}")
+    connection_string = connection_string.replace("userKeyFile=", f"userKeyFile={os.path.join(cert_folder, '')}")
+
+    if "userCertFile=" not in connection_string:
+        raise Exception("userCertFile parameter is required in the connection string")
+    if "userKeyFile=" not in connection_string:
+        raise Exception("userKeyFile parameter is required in the connection string")
+
+    return connection_string, ca_file
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Sample Python app")
-    parser.add_argument('--username', type=str, help='esdb username. (default \'admin\')', default='admin')
-    parser.add_argument('--password', type=str, help='password')
-    parser.add_argument('--host', type=str, help='the esdb hostname')
-    parser.add_argument('--cert', type=str, help='path to certificate')
-    parser.add_argument('--key', type=str, help='path to key')
-    parser.add_argument('--ca', type=str, help='path to ca certificate')
+    parser.add_argument('--connection-string', type=str, help='EventStoreDB connection string')
+    parser.add_argument('--cert-folder', type=str, help='Path to folder containing certificate files')
     args = parser.parse_args()
-    validate_args(args=args)
 
-    conn_str = build_connection_string(args=args)
-    bundle = build_bundle(cert_path=args.cert, key_path=args.key, ca_path=args.ca)
-    client = EventStoreDBClient(uri=conn_str, root_certificates=bundle)
+    conn_details = validate_connection_string(args.connection_string, args.cert_folder)
+    ca = read_file_to_string(conn_details[1]) if conn_details[1] else None
+    if ca is None:
+        raise Exception("CA file is required")
+
+    client = EventStoreDBClient(uri=conn_details[0], root_certificates=ca)
 
     stream_name = generate_events(client=client)
     read_stream(client, stream_name=stream_name)
