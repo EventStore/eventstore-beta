@@ -37,12 +37,14 @@ An example connection string looks like the following:
 esdb+discover://admin:somepassword@esdb.cs8lpa0a78v4qvbn1nlg.cs8i1c8a78v4qvbn1mtg.sites.dev.eventstore.cloud:2113?userCertFile=tls.crt&tlsCaFile=ca.crt&userKeyFile=tls.key
 ```
 
+In the above example connection string, the certificates would be in the current directory, however the parameters also accept an absolute path.
+
 ## Running the Application
 
 ### 1. Run the script
 
 ```bash
-python sample.py --connection-string "<CONNECTION_STRING>" --cert-folder Path/to/certs
+python sample.py --connection-string "<CONNECTION_STRING>"
 ```
 
 ### 2. Output
