@@ -1,10 +1,8 @@
 import argparse
 import json
-import os
 import random
 import uuid
 from abc import ABC, abstractmethod
-from argparse import Namespace
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
@@ -93,95 +91,12 @@ def read_stream(client: EventStoreDBClient, stream_name: str):
             print(f"Error decoding or parsing JSON data: {e}")
 
 
-def read_file_to_string(file_path: str) -> str:
-    try:
-        with open(file_path, 'r') as file:
-            return file.read().rstrip()
-    except FileNotFoundError:
-        raise Exception(f"File not found: {file_path}")
-    except IOError:
-        raise Exception(f"Error reading file: {file_path}")
-
-
-def build_bundle(cert_path: str, key_path: str, ca_path: str) -> str:
-    try:
-        with open(cert_path, 'r') as cert_file:
-            cert_content = cert_file.read().rstrip()
-        with open(key_path, 'r') as key_file:
-            key_content = key_file.read().rstrip()
-        with open(ca_path, 'r') as ca_file:
-            ca_content = ca_file.read().rstrip()
-        return f"{cert_content}\n{key_content}\n{ca_content}"
-    except FileNotFoundError as e:
-        raise Exception(f"File not found: {e.filename}")
-    except IOError as e:
-        raise Exception(f"Error reading file: {e}")
-
-
-def build_connection_string(args: Namespace) -> str:
-    return f'esdb://{args.username}:{args.password}@{args.host}?UserCertFile={args.cert}&UserKeyFile={args.key}'
-
-
-def validate_args(args: Namespace):
-    if not args.password:
-        raise Exception("password is required")
-    if not args.host:
-        raise Exception("host is required")
-    # Validate cert, key, and ca files
-    for arg_name, arg_value in [('cert', args.cert), ('key', args.key), ('ca', args.ca)]:
-        if not arg_value:
-            raise Exception(f"{arg_name} is required")
-        if not os.path.isfile(arg_value):
-            raise FileNotFoundError(f"{arg_name} must be a valid file path")
-        if not os.access(arg_value, os.R_OK):
-            raise Exception(f"{arg_name} must be a readable file")
-
-
-def validate_connection_string(connection_string: str, cert_folder: str) -> tuple[str, str]:
-    start_index = connection_string.find("?tlsCaFile=")
-    if start_index == -1:
-        start_index = connection_string.find("&tlsCaFile=")
-        if start_index == -1:
-            raise Exception("tlsCaFile parameter is required in the connection string")
-
-    end_index = connection_string.find("&", start_index + 1)
-    if end_index == -1:
-        ca_file = connection_string[start_index + len("?tlsCaFile="):]
-        if connection_string[start_index] == '?':
-            connection_string = connection_string[:start_index] + "?"
-        else:
-            connection_string = connection_string[:start_index]
-    else:
-        ca_file = connection_string[start_index + len("?tlsCaFile="):end_index]
-        if connection_string[start_index] == '?':
-            connection_string = connection_string[:start_index + 1] + connection_string[end_index + 1:]
-        else:
-            connection_string = connection_string[:start_index] + connection_string[end_index:]
-
-    ca_file = os.path.join(cert_folder, ca_file)
-    connection_string = connection_string.replace("userCertFile=", f"userCertFile={os.path.join(cert_folder, '')}")
-    connection_string = connection_string.replace("userKeyFile=", f"userKeyFile={os.path.join(cert_folder, '')}")
-
-    if "userCertFile=" not in connection_string:
-        raise Exception("userCertFile parameter is required in the connection string")
-    if "userKeyFile=" not in connection_string:
-        raise Exception("userKeyFile parameter is required in the connection string")
-
-    return connection_string, ca_file
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Sample Python app")
     parser.add_argument('--connection-string', type=str, help='EventStoreDB connection string')
-    parser.add_argument('--cert-folder', type=str, help='Path to folder containing certificate files')
     args = parser.parse_args()
 
-    conn_details = validate_connection_string(args.connection_string, args.cert_folder)
-    ca = read_file_to_string(conn_details[1]) if conn_details[1] else None
-    if ca is None:
-        raise Exception("CA file is required")
-
-    client = EventStoreDBClient(uri=conn_details[0], root_certificates=ca)
+    client = EventStoreDBClient(uri=args.connection_string)
 
     stream_name = generate_events(client=client)
     read_stream(client, stream_name=stream_name)
